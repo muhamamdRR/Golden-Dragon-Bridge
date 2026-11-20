@@ -1,0 +1,6 @@
+{
+  "name": "Golden Dragon Bridge",
+  "description": "Trusted China sourcing and supply-chain partner connecting China manufacturing with UAE and GCC importers, wholesalers, distributors, and contractors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
