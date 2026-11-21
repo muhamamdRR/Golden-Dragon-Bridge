@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Copy, Mail } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { SERVICE_MODELS, ServiceModel } from '../data/goldenDragonData';
 
@@ -33,6 +33,8 @@ interface FormErrors {
   productNotes?: string;
 }
 
+const RECIPIENT_EMAIL = 'ali110akbar@gmail.com';
+
 const SERVICE_FOCUS_LABELS: Record<InquiryOption, string> = {
   'model-a': 'Model A — Mixed-carton electronics consolidation',
   'model-b': 'Model B — Technical factory sourcing and inspection',
@@ -42,6 +44,31 @@ const SERVICE_FOCUS_LABELS: Record<InquiryOption, string> = {
   'china-visit': 'China Visit & On-the-Ground Assistance',
   general: 'General China–UAE/GCC Sourcing Consultation',
 };
+
+function buildEmailPayload(brief: FormState) {
+  const serviceLabel = SERVICE_FOCUS_LABELS[brief.serviceFocus];
+  const subject = `Golden Dragon Bridge Sourcing Inquiry — ${brief.companyName.trim()}`;
+  const body = [
+    'Golden Dragon Bridge — New Sourcing Inquiry',
+    '------------------------------------------------------------',
+    `Company / Trading Name: ${brief.companyName.trim()}`,
+    `Contact Name & Role: ${brief.contactName.trim()}`,
+    `Business Email: ${brief.email.trim()}`,
+    `Phone / WhatsApp: ${brief.phone.trim() || 'Not provided'}`,
+    `Business Category: ${brief.buyerType}`,
+    `Service Model / Support Area: ${serviceLabel}`,
+    `Expected Dispatch Mode: ${brief.freightPreference}`,
+    '',
+    'Product Scope, Technical Specs & Target Market:',
+    brief.productNotes.trim(),
+  ].join('\n');
+
+  const mailtoHref = `mailto:${RECIPIENT_EMAIL}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
+
+  return { subject, body, mailtoHref };
+}
 
 export default function InquirySection({
   selectedModelId,
@@ -60,6 +87,7 @@ export default function InquirySection({
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submittedBrief, setSubmittedBrief] = useState<FormState | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (selectedModelId) {
@@ -100,7 +128,30 @@ export default function InquirySection({
     if (Object.keys(validationErrors).length > 0) {
       return;
     }
-    setSubmittedBrief({ ...form });
+
+    const briefSnapshot = { ...form };
+    const { mailtoHref } = buildEmailPayload(briefSnapshot);
+    setSubmittedBrief(briefSnapshot);
+    setCopied(false);
+
+    // Trigger default mail client with pre-filled inquiry to ali110akbar@gmail.com
+    const mailLink = document.createElement('a');
+    mailLink.href = mailtoHref;
+    mailLink.style.display = 'none';
+    document.body.appendChild(mailLink);
+    mailLink.click();
+    document.body.removeChild(mailLink);
+  };
+
+  const handleCopyBrief = async (brief: FormState) => {
+    const { subject, body } = buildEmailPayload(brief);
+    const fullText = `To: ${RECIPIENT_EMAIL}\nSubject: ${subject}\n\n${body}`;
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const handleServiceSelect = (value: InquiryOption) => {
@@ -168,17 +219,19 @@ export default function InquirySection({
                   />
                   <div>
                     <div className="text-xs font-semibold text-emerald-800">
-                      Sourcing Brief Prepared
+                      Email Draft Prepared for {RECIPIENT_EMAIL}
                     </div>
                     <h3 className="font-display text-2xl font-bold text-[#081B33] mt-1">
                       Thank you, {submittedBrief.contactName}
                     </h3>
                     <p className="text-sm leading-relaxed text-slate-600 mt-1.5">
-                      Your sourcing inquiry summary for{' '}
+                      Your sourcing inquiry for{' '}
                       <span className="font-semibold text-[#081B33]">
                         {submittedBrief.companyName}
                       </span>{' '}
-                      has been recorded for Stage 01 review.
+                      has been formatted and sent to your email app addressed to{' '}
+                      <span className="font-semibold text-[#081B33]">{RECIPIENT_EMAIL}</span>. If
+                      your email client did not open automatically, use the direct actions below.
                     </p>
                   </div>
                 </div>
@@ -219,17 +272,33 @@ export default function InquirySection({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={buildEmailPayload(submittedBrief).mailtoHref}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#081B33] hover:bg-[#102B4D] rounded-md transition-colors duration-150"
+                  >
+                    <Mail className="w-4 h-4 text-[#D9A944]" aria-hidden="true" />
+                    <span>Open Email to {RECIPIENT_EMAIL}</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBrief(submittedBrief)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-[#081B33] bg-white border border-[#E2E6EC] hover:border-[#081B33] rounded-md transition-colors duration-150 cursor-pointer"
+                  >
+                    <Copy className="w-4 h-4 text-slate-500" aria-hidden="true" />
+                    <span>{copied ? 'Copied Email Text' : 'Copy Email Text'}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setSubmittedBrief(null)}
-                    className="px-4 py-2.5 text-sm font-semibold text-white bg-[#081B33] hover:bg-[#102B4D] rounded-md transition-colors duration-150 cursor-pointer"
+                    className="px-4 py-2.5 text-sm font-semibold text-slate-700 hover:text-[#081B33] transition-colors duration-150 cursor-pointer"
                   >
-                    Edit Sourcing Brief
+                    Edit Brief
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setSubmittedBrief(null);
+                      setCopied(false);
                       setForm({
                         companyName: '',
                         contactName: '',
@@ -242,7 +311,7 @@ export default function InquirySection({
                       });
                       onModelChange(null);
                     }}
-                    className="px-4 py-2.5 text-sm font-semibold text-[#081B33] bg-white border border-[#E2E6EC] hover:border-[#081B33] rounded-md transition-colors duration-150 cursor-pointer"
+                    className="px-4 py-2.5 text-sm font-semibold text-slate-700 hover:text-[#081B33] transition-colors duration-150 cursor-pointer"
                   >
                     Start New Inquiry
                   </button>
@@ -470,8 +539,7 @@ export default function InquirySection({
 
                 <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <p className="text-xs text-slate-500">
-                    Stage 01 review · Clear documentation &amp; specification alignment before
-                    purchase.
+                    Stage 01 review · Opens a pre-addressed email to {RECIPIENT_EMAIL}.
                   </p>
                   <button
                     type="submit"
